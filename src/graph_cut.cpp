@@ -174,8 +174,8 @@ main (int argc, char ** argv)
     return (1);
   }
 
-  float voxel_resolution = 0.008f;
-  float seed_resolution = 0.1f;
+  float voxel_resolution = 0.005f;
+  float seed_resolution = 0.008f;
   float color_importance = 0.2f;
   float spatial_importance = 0.4f;
   float normal_importance = 1.0f;
