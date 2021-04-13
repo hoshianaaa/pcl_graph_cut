@@ -11,6 +11,16 @@
     <param name="output_topic_name" value="graph_cut_points"/>
   </node>
 
+   <node name="detect_graspable_poses_pcabase"
+        pkg="jsk_pcl_ros" type="detect_graspable_poses_pcabase.py">
+    <remap from="~input" to="graph_cut_points" />
+    <rosparam subst_value="true">
+      direction: z
+      hand_size: 0.10
+      interval_m: 0.03
+    </rosparam>
+  </node>
+
   <group if="$(arg gui)">
 	  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find pcl_graph_cut)/rviz/demo_karage.rviz" required="true" />
   </group>
