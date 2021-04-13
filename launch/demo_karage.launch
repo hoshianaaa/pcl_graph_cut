@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="pcl_graph_cut" type="graph_cut_ros" name="graph_cut_ros">
+    <param name="input_topic_name" value="karage_points"/>
+    <param name="output_topic_name" value="graph_cut_points"/>
+  </node>
+</launch>

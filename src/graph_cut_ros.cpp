@@ -184,9 +184,11 @@ class GraphCut
 GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
 {
 
-  frame_ = "base_link";
-  input_topic_name_ = "/input_cloud";
-  output_topic_name_ = "/output_cloud";
+  ros::NodeHandle private_nh("~");
+
+  private_nh.param("sensor_frame", frame_, std::string("/base_link"));
+  private_nh.param("input_topic_name", input_topic_name_, std::string("input_cloud"));
+  private_nh.param("output_topic_name", output_topic_name_, std::string("output_cloud"));
 
   cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(output_topic_name_,1, false);
   cloud_sub_ = nh_.subscribe(input_topic_name_, 1, &GraphCut::cloudCallback, this);
