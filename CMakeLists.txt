@@ -8,9 +8,14 @@ find_package(catkin REQUIRED COMPONENTS
  roscpp
  rospy
  sensor_msgs
+ dynamic_reconfigure
 )
 
 find_package(PCL 1.8 REQUIRED)
+
+generate_dynamic_reconfigure_options(
+  cfg/GraphCutRos.cfg
+)
 
 catkin_package(
 )

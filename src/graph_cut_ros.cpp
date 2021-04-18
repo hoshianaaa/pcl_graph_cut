@@ -5,6 +5,9 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <std_srvs/Empty.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <pcl_graph_cut/GraphCutRosConfig.h>
+
 //pcl
 #include <pcl/console/parse.h>
 #include <pcl/point_cloud.h>
@@ -38,6 +41,10 @@ void addSupervoxelConnectionsToViewer (PointT &supervoxel_center,
 
 double U = 30;
 double SIGMA = 10;
+
+double BETA = 10;
+double THETA_TH = 0;
+double C_SHARP = 3;
 
 class Energy
 {
@@ -274,7 +281,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   int maxZlabel;
   getLabelMaxZ(supervoxel_clusters, maxZlabel);
 
-  std::cout << "max z label:" << maxZlabel << std::endl;
+  //std::cout << "max z label:" << maxZlabel << std::endl;
 
   int now_distance = 0;
   std::vector<int> now_labels;
@@ -286,12 +293,12 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     if(!calcAroundDistance(supervoxel_adjacency, label_distance_map, now_labels, now_distance))break;
   }
 
-  printMap(label_distance_map,"label_distance_map");
+  //printMap(label_distance_map,"label_distance_map");
 
   std::map<std::uint32_t, std::uint32_t> label_area_map;
   calcLabelArea(label_distance_map, label_area_map);
 
-  printMap(label_area_map,"label_area_map");
+  //printMap(label_area_map,"label_area_map");
 
   std::map<std::uint32_t, Energy> label_energy_map;
   
@@ -442,12 +449,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     }
     */
 
-    double beta = 10;
-    double theta_th = 0;
-    double c_sharp = 3;
-
     double x = std::min(f_uv, g_uv);
-    double t = beta * (1 + (x - theta_th)*c_sharp/std::sqrt(1 + std::pow(x - theta_th, 2) * std::pow(c_sharp, 2))) / 2;
+    double t = BETA * (1 + (x - THETA_TH)*C_SHARP/std::sqrt(1 + std::pow(x - THETA_TH, 2) * std::pow(C_SHARP, 2))) / 2;
     adj_pair_energy_list.push_back(t);
   }
 
@@ -488,14 +491,14 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   double flow = g.maxflow();
 
-  std::cout << "Flow:" << flow << std::endl;
+  //std::cout << "Flow:" << flow << std::endl;
 
   std::vector<int> debug_labels;
   for (int i=1;i<label_energy_map.size() + 1;i++)
   {
     if (g.what_segment(i) == 1)
     {
-      std::cout << node_id_to_label[i] << std::endl;
+      //std::cout << node_id_to_label[i] << std::endl;
       debug_labels.push_back(node_id_to_label[i]);
     }
   }
@@ -528,10 +531,29 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
 }
 
+void callback(pcl_graph_cut::GraphCutRosConfig& config, uint32_t level)
+{
+  std::cout << "recongigure Request" << std::endl;
+  std::cout << "U:" << config.U << std::endl;
+  std::cout << "SIGMA:" << config.SIGMA << std::endl;
+  std::cout << "C_SHARP:" << config.C_SHARP << std::endl;
+
+  U = config.U;
+  SIGMA = config.SIGMA;
+  C_SHARP = config.C_SHARP;
+
+}
+
 int main(int argc, char **argv)
 {
   
   ros::init(argc, argv, "graph_cut_ros");
+
+  dynamic_reconfigure::Server<pcl_graph_cut::GraphCutRosConfig> server;
+  dynamic_reconfigure::Server<pcl_graph_cut::GraphCutRosConfig>::CallbackType f;
+
+  f = boost::bind(&callback, _1, _2);
+  server.setCallback(f);
 
   ros::NodeHandle nh;
 
