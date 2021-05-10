@@ -201,6 +201,18 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>());
   pcl::fromROSMsg (pc, *cloud);
 
+  if (cloud->size() == 0)
+  {
+
+    sensor_msgs::PointCloud2 ros_cloud;
+    pcl::toROSMsg(*cloud, ros_cloud);
+
+    ros_cloud.header = pc.header;
+    ros_cloud.is_dense = false;
+    cloud_pub_.publish(ros_cloud);
+
+    return;
+  }
 
   float voxel_resolution = 0.005f;
   float seed_resolution = 0.008f;
