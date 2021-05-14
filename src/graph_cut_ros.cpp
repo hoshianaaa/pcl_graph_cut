@@ -48,7 +48,8 @@ double BETA = 10;
 double THETA_TH = 0;
 double C_SHARP = 3;
 
-int CLOUD_SIZE_TH = 50;
+int DELETE_CLOUD_SIZE_TH = 50;
+int PICK_SUCCESS_CLOUD_SIZE_TH  = 50;
 
 class Energy
 {
@@ -184,13 +185,22 @@ class GraphCut
 
     ros::Publisher debug_cloud_pub_,target_cloud_pub_;
     ros::Subscriber cloud_sub_;
+    ros::ServiceServer srv_pre_pick_ ,srv_after_pick_;
 
     void cloudCallback(const sensor_msgs::PointCloud2 &pc);
+    bool PrePickServiceCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp);
+    bool AfterPickServiceCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp);
 
     std::string frame_;
     std::string input_topic_name_;
     std::string debug_topic_name_;
     std::string output_topic_name_;
+
+    PointCloudT input_cloud_;
+    PointCloudT registered_cloud_;
+
+    int fail_count_;
+
 };
 
 GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
@@ -207,6 +217,63 @@ GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
   target_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(output_topic_name_,1, false);
   cloud_sub_ = nh_.subscribe(input_topic_name_, 1, &GraphCut::cloudCallback, this);
 
+  srv_pre_pick_ = nh_.advertiseService("prePick", &GraphCut::PrePickServiceCallback, this);
+  srv_after_pick_ = nh_.advertiseService("afterPick", &GraphCut::AfterPickServiceCallback, this);
+
+}
+
+bool GraphCut::PrePickServiceCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp) {
+  ROS_INFO_STREAM("register pre pick cloud");
+  registered_cloud_ = input_cloud_;
+  
+
+  return true;
+}
+
+bool GraphCut::AfterPickServiceCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp) {
+  ROS_INFO_STREAM("after pick cloud");
+
+  float resolution_ = 0.01f;
+
+  pcl::PointCloud<pcl::PointXYZRGBA>::Ptr filtered_cloud;
+
+  pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZRGBA> *octree_  = new  pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZRGBA>(resolution_);
+
+  octree_->setInputCloud (input_cloud_.makeShared());
+  octree_->addPointsFromInputCloud ();
+
+  octree_->switchBuffers ();
+
+  octree_->setInputCloud (registered_cloud_.makeShared());
+  octree_->addPointsFromInputCloud ();
+
+  boost::shared_ptr<std::vector<int> > newPointIdxVector (new std::vector<int>);
+
+  int noise_filter = 2;
+
+  octree_->getPointIndicesFromNewVoxels (*newPointIdxVector, noise_filter);
+
+  filtered_cloud.reset (new pcl::PointCloud<pcl::PointXYZRGBA>);
+  filtered_cloud->points.reserve(newPointIdxVector->size());
+
+  for (std::vector<int>::iterator it = newPointIdxVector->begin (); it != newPointIdxVector->end (); it++)
+    filtered_cloud->points.push_back(registered_cloud_[*it]);
+
+  auto cloud_size = filtered_cloud->points.size();
+  std::cout << "diff cloud size:" << cloud_size << std::endl;
+
+  if ( cloud_size > PICK_SUCCESS_CLOUD_SIZE_TH )
+  {
+    std::cout << "pick up success!!!" << cloud_size << std::endl;
+    fail_count_ = 0;
+  }
+  else
+  {
+    std::cout << "pick up fail!!!" << cloud_size << std::endl;
+    fail_count_++;
+  }
+
+  return true;
 }
 
 void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
@@ -214,6 +281,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>());
   pcl::fromROSMsg (pc, *cloud);
+
+  input_cloud_ = *cloud;
 
   if (cloud->size() == 0)
   {
@@ -553,7 +622,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     //viewer->addPointCloud (points.makeShared(), "max_z_cluster");
 
-    if (points.size() < CLOUD_SIZE_TH)
+    if (points.size() < DELETE_CLOUD_SIZE_TH)
       std::cout << "NG size" << std::endl;
     else
     {
@@ -597,8 +666,6 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   }
 
-  //認識した物体のリストからパラメータで指定したサイズに近いものを選ぶ
-
   std::vector<int> size_list;
 
   for (int i=0;i<target_points_list.size();i++)
@@ -616,8 +683,10 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   debug_cloud_pub_.publish(debug_cloud_ros);
 
 
+  int size = target_points_list.size();
+
   sensor_msgs::PointCloud2 detect_cloud_ros;
-  pcl::toROSMsg(target_points_list[0], detect_cloud_ros);
+  pcl::toROSMsg(target_points_list[fail_count_ % size], detect_cloud_ros);
 
   detect_cloud_ros.header = pc.header;
   detect_cloud_ros.is_dense = false;
@@ -635,7 +704,9 @@ void callback(pcl_graph_cut::GraphCutRosConfig& config, uint32_t level)
   U = config.U;
   SIGMA = config.SIGMA;
   C_SHARP = config.C_SHARP;
-  CLOUD_SIZE_TH = config.CLOUD_SIZE_TH;
+  DELETE_CLOUD_SIZE_TH = config.DELETE_CLOUD_SIZE_TH;
+  PICK_SUCCESS_CLOUD_SIZE_TH = config.PICK_SUCCESS_CLOUD_SIZE_TH;
+  
 
 }
 
