@@ -91,7 +91,7 @@ Visualization Manager:
       Channel Name: intensity
       Class: rviz/PointCloud2
       Color: 239; 41; 41
-      Color Transformer: FlatColor
+      Color Transformer: RGB8
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -212,4 +212,4 @@ Window Geometry:
     collapsed: false
   Width: 1579
   X: 336
-  Y: 66
+  Y: 36
