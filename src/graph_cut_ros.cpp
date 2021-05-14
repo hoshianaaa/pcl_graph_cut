@@ -182,13 +182,14 @@ class GraphCut
   private:
     ros::NodeHandle nh_;
 
-    ros::Publisher cloud_pub_;
+    ros::Publisher debug_cloud_pub_,target_cloud_pub_;
     ros::Subscriber cloud_sub_;
 
     void cloudCallback(const sensor_msgs::PointCloud2 &pc);
 
     std::string frame_;
     std::string input_topic_name_;
+    std::string debug_topic_name_;
     std::string output_topic_name_;
 };
 
@@ -199,9 +200,11 @@ GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
 
   private_nh.param("sensor_frame", frame_, std::string("/base_link"));
   private_nh.param("input_topic_name", input_topic_name_, std::string("input_cloud"));
+  private_nh.param("debug_topic_name", debug_topic_name_, std::string("debug_cloud"));
   private_nh.param("output_topic_name", output_topic_name_, std::string("output_cloud"));
 
-  cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(output_topic_name_,1, false);
+  debug_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(debug_topic_name_,1, false);
+  target_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(output_topic_name_,1, false);
   cloud_sub_ = nh_.subscribe(input_topic_name_, 1, &GraphCut::cloudCallback, this);
 
 }
@@ -220,7 +223,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     ros_cloud.header = pc.header;
     ros_cloud.is_dense = false;
-    cloud_pub_.publish(ros_cloud);
+    debug_cloud_pub_.publish(ros_cloud);
+    target_cloud_pub_.publish(ros_cloud);
 
     return;
   }
@@ -235,7 +239,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   ////// This is how to use supervoxels
   //////////////////////////////  //////////////////////////////
 
-  PointCloudT target_list;
+  PointCloudT target_points;
+  std::vector<PointCloudT> target_points_list;
 
   while (1) 
   {
@@ -552,7 +557,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       std::cout << "NG size" << std::endl;
     else
     {
-      target_list += points;
+      target_points += points;
+      target_points_list.push_back(points);
     }
 
     float resolution_ = 0.01f;
@@ -588,14 +594,34 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     if (filtered_cloud->points.size() == 0)break;
     else cloud = filtered_cloud;
 
+
   }
 
+  //認識した物体のリストからパラメータで指定したサイズに近いものを選ぶ
+
+  std::vector<int> size_list;
+
+  for (int i=0;i<target_points_list.size();i++)
+  {
+    int size = target_points_list[i].size();
+    size_list.push_back(size);
+    std::cout << "size:" << size << std::endl;
+  }
+
+  sensor_msgs::PointCloud2 debug_cloud_ros;
+  pcl::toROSMsg(target_points, debug_cloud_ros);
+
+  debug_cloud_ros.header = pc.header;
+  debug_cloud_ros.is_dense = false;
+  debug_cloud_pub_.publish(debug_cloud_ros);
+
+
   sensor_msgs::PointCloud2 detect_cloud_ros;
-  pcl::toROSMsg(target_list, detect_cloud_ros);
+  pcl::toROSMsg(target_points_list[0], detect_cloud_ros);
 
   detect_cloud_ros.header = pc.header;
   detect_cloud_ros.is_dense = false;
-  cloud_pub_.publish(detect_cloud_ros);
+  target_cloud_pub_.publish(detect_cloud_ros);
 
 }
 
