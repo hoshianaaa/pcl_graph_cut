@@ -1,3 +1,122 @@
+#include <iostream>
+#include <stdio.h>
+#include <sys/times.h>
+#include <sys/sysinfo.h>
+#include <sys/statvfs.h>
+
+/** 
+ * @brief Linuxにおいてシステム情報を取得するためのクラス
+ */
+using namespace std;
+
+class SystemAnalyzer{
+  public:
+    SystemAnalyzer(){
+      preTick_=0;
+      preTime_=times(NULL);
+    }
+
+    //~~~~~~functions~~~~~~~
+
+    /**
+     * @brief CPUの使用率を返す関数
+     * @param nCPU CPUの数
+     * @return システム全体のCPUの使用率[%]
+     */
+    unsigned int GetCPUUsage(int nCPU){
+      unsigned int cpuUsage=0;
+
+      // 演算に使用されたTick値を取得
+      FILE *infile = fopen( "/proc/stat", "r" );
+      if ( NULL == infile ){
+        cout<<"[GetCPUUsage]<<Cannot open /proc/stat"<<endl;
+        return 0;
+      }
+
+      int usr, nice, sys;
+      char buf[1024]; // 文字列"cpu"の部分の入力用
+      int result=fscanf( infile, "%s %d %d %d", buf, &usr, &nice, &sys );
+      if(result==-1){
+        cout<<"[GetCPUUsage]<<Cannot read fscanf"<<endl;
+        return 0;
+      }
+      fclose( infile );
+
+      // 現在の時刻を取得
+      clock_t now = times(NULL);
+
+      if(preTick_==0){//一回目の呼び出しの場合
+        // 取得したTick値、時刻を保存
+        preTick_ = usr + nice + sys;
+        preTime_ = now;
+        return 0;//0%を返す
+      }
+
+      // CPU利用率を算出
+      // この計算式では、100% x CPUを最大値としたCPU使用率が計算されてしまうので、nCPUで割る
+      cpuUsage = ( (double)( usr + nice + sys - preTick_ ) / ( now - preTime_ ) )*100.0/nCPU;
+
+      // 取得したTick値、時刻を保存
+      preTick_ = usr + nice + sys;
+      preTime_ = now;
+
+      return cpuUsage;
+    }
+
+    /**
+     * @brief 使用されているメモリの割合を取得する関数
+     *
+     * @return 使用されているメモリの割合[%] 0-100 
+     */
+    double GetMemoryUsage(void){
+      struct sysinfo info;
+      sysinfo(&info);
+
+      //メモリの枚数で正規化
+      unsigned long totalram = (info.totalram * info.mem_unit) / 1024;
+      unsigned long freeram = (info.freeram * info.mem_unit ) / 1024;
+     
+      //メモリ使用量を計算
+      double memoryUsage=(double)(totalram-freeram)/(double)totalram*100;
+
+      return memoryUsage;
+    }
+
+    /**
+     * @brief 使用されているディスクの割合を取得する関数
+     *
+     * @return 使用されているディスクの割合[%] 0-100 
+     */
+    unsigned int GetDiskUsage(void){
+      unsigned int diskUsage=0;
+
+      //システムデータの読み込み
+      struct statvfs buf;
+      statvfs("/",&buf);
+
+      float availableDisk=((float)buf.f_frsize*(float)buf.f_bavail/1024.0);
+      float allDisk=((float)buf.f_frsize*(float)buf.f_blocks/1024.0);
+      
+      //使用ディスク容量の計算
+      diskUsage=100.0-availableDisk/allDisk*100.0;
+
+      return diskUsage;
+    }
+
+ 
+
+  private:
+    //GetCPUUsage用
+    int preTick_;  // 前の/proc/statの値を保持
+    clock_t preTime_;  // 前の時刻を保持
+
+    //~~~~~~Struct/Enum~~~~~~
+
+    //~~~~~~Members~~~~~
+
+    //~~~~~~functions~~~~~~~
+};
+
 //ros
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -214,6 +333,22 @@ class GraphCut
 
     int fail_count_;
 
+    SystemAnalyzer analyzer_; 
+    double memUsage_;
+    double pre_memUsage_;
+
+    double GetMemDiff();
+
+    double mem_diff_sum_1;
+    double mem_diff_sum_2_1;
+    double mem_diff_sum_2_2;
+    double mem_diff_sum_2_3;
+    double mem_diff_sum_2_4;
+    double mem_diff_sum_2_5;
+    double mem_diff_sum_2_6;
+    double mem_diff_sum_3;
+    double mem_diff_sum_4;
+
 };
 
 GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
@@ -233,7 +368,30 @@ GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
   srv_pre_pick_ = nh_.advertiseService("prePick", &GraphCut::PrePickServiceCallback, this);
   srv_after_pick_ = nh_.advertiseService("afterPick", &GraphCut::AfterPickServiceCallback, this);
 
+  memUsage_ = 0;
+  pre_memUsage_ = 0;
+
+  mem_diff_sum_1 = 0;
+  mem_diff_sum_2_1 = 0;
+  mem_diff_sum_2_2 = 0;
+  mem_diff_sum_2_3 = 0;
+  mem_diff_sum_2_4 = 0;
+  mem_diff_sum_2_5 = 0;
+  mem_diff_sum_2_6 = 0;
+  mem_diff_sum_3 = 0;
+  mem_diff_sum_4 = 0;
+
 }
+
+double GraphCut::GetMemDiff() {
+
+  memUsage_=analyzer_.GetMemoryUsage();
+  auto diff = memUsage_ - pre_memUsage_;
+  pre_memUsage_ = memUsage_;
+
+  return diff;
+}
+
 
 bool GraphCut::PrePickServiceCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp) {
   ROS_INFO_STREAM("register pre pick cloud");
@@ -286,12 +444,15 @@ bool GraphCut::AfterPickServiceCallback(std_srvs::Empty::Request &req, std_srvs:
     fail_count_++;
   }
 
+  delete octree_;
+
   return true;
 }
 
 void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 {
 
+  
   pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>());
   pcl::fromROSMsg (pc, *cloud);
 
@@ -327,30 +488,39 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   std::vector<PointCloudT> target_points_list;
   int loop_count = 0;
 
+  mem_diff_sum_1 += GetMemDiff();
+  cout<<"Memory Usage 1 :"<< mem_diff_sum_1 <<endl;
+
   while (1) 
   {
-      
-    std::cout << "super input cloud" << std::endl;
-    std::cout << "size:" << cloud->points.size() << std::endl;
+
     std::cout << "loop count:" << loop_count << std::endl;
+
+    //std::cout << "super input cloud" << std::endl;
+    //std::cout << "size:" << cloud->points.size() << std::endl;
     pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
     super.setInputCloud (cloud);
     super.setColorImportance (color_importance);
     super.setSpatialImportance (spatial_importance);
     super.setNormalImportance (normal_importance);
 
+    mem_diff_sum_2_1 += GetMemDiff();
+    cout<<"Memory Usage 2.1 :"<< mem_diff_sum_2_1 << endl;
+
     std::map <std::uint32_t, pcl::Supervoxel<PointT>::Ptr > supervoxel_clusters;
 
-    pcl::console::print_highlight ("Extracting supervoxels!\n");
+    //pcl::console::print_highlight ("Extracting supervoxels!\n");
     super.extract (supervoxel_clusters);
-    pcl::console::print_info ("Found %d supervoxels\n", supervoxel_clusters.size ());
+    //pcl::console::print_info ("Found %d supervoxels\n", supervoxel_clusters.size ());
     PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud ();
     PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud ();
     //PointNCloudT::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud (supervoxel_clusters);
-    pcl::console::print_highlight ("Getting supervoxel adjacency\n");
+    //pcl::console::print_highlight ("Getting supervoxel adjacency\n");
     std::multimap<std::uint32_t, std::uint32_t> supervoxel_adjacency;
     super.getSupervoxelAdjacency (supervoxel_adjacency);
 
+    mem_diff_sum_2_2+= GetMemDiff();
+    cout<<"Memory Usage 2.2 :"<< mem_diff_sum_2_2 << endl;
 
     //pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
     //viewer->setBackgroundColor (0, 0, 0);
@@ -389,6 +559,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       label_itr = supervoxel_adjacency.upper_bound (supervoxel_label);
     }
 
+    mem_diff_sum_2_3+= GetMemDiff();
+    cout<<"Memory Usage 2.3 :"<< mem_diff_sum_2_3 << endl;
 
     //graph_cutの処理
 
@@ -407,6 +579,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       if(!calcAroundDistance(supervoxel_adjacency, label_distance_map, now_labels, now_distance))break;
     }
 
+    mem_diff_sum_2_4+= GetMemDiff();
+    cout<<"Memory Usage 2.4 :"<< mem_diff_sum_2_4 << endl;
 
     //printMap(label_distance_map,"label_distance_map");
 
@@ -441,6 +615,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       label_energy_map.insert(std::make_pair(key, e));
     }
 
+    mem_diff_sum_2_5+= GetMemDiff();
+    cout<<"Memory Usage 2.5 :"<< mem_diff_sum_2_5 << endl;
 
   /*
     std::vector<int> l;
@@ -579,11 +755,10 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       std::vector<double>().swap(normal_u);
       std::vector<double>().swap(normal_v);
       std::vector<double>().swap(out_vec);
-
     }
 
-
-
+    mem_diff_sum_2_6+= GetMemDiff();
+    cout<<"Memory Usage 2.6 :"<< mem_diff_sum_2_6 << endl;
 
     //グラフカット
 
@@ -656,9 +831,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     //viewer->addPointCloud (points.makeShared(), "max_z_cluster");
 
-    if (points.size() < DELETE_CLOUD_SIZE_TH)
-      std::cout << "NG size" << std::endl;
-    else
+    if (points.size() >= DELETE_CLOUD_SIZE_TH)
     {
       target_points += points;
       target_points_list.push_back(points);
@@ -690,9 +863,16 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     for (std::vector<int>::iterator it = newPointIdxVector->begin (); it != newPointIdxVector->end (); it++)
       filtered_cloud->points.push_back(cloud->points[*it]);
 
-    std::cout << "filtered cloud size:" << filtered_cloud->points.size() << std::endl;
-    std::cout << "origin size:" << cloud->points.size() << std::endl;
-    std::cout << "target size:" << points.size() << std::endl;
+    //std::cout << "filtered cloud size:" << filtered_cloud->points.size() << std::endl;
+    //std::cout << "origin size:" << cloud->points.size() << std::endl;
+    //std::cout << "target size:" << points.size() << std::endl;
+
+
+    delete g;
+    delete octree_;
+
+    mem_diff_sum_3 += GetMemDiff();
+    cout<<"Memory Usage 3 :"<< mem_diff_sum_3 << endl;
 
     if (filtered_cloud->points.size() == 0)break;
     else cloud = filtered_cloud;
@@ -700,9 +880,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
 
     //memory開放 while内
-
-    delete g;
-
+    /*
     now_labels.clear();
     adj_label_pair_list.clear();
     adj_pair_energy_list.clear();
@@ -726,7 +904,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     std::map<std::uint32_t, Energy>().swap(label_energy_map);
     std::map<int, int>().swap(label_to_node_id);
     std::map<int, int>().swap(node_id_to_label);
-
+    */
 
     
   }
@@ -737,7 +915,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   {
     int size = target_points_list[i].size();
     size_list.push_back(size);
-    std::cout << "size:" << size << std::endl;
+    //std::cout << "size:" << size << std::endl;
   }
 
   sensor_msgs::PointCloud2 debug_cloud_ros;
@@ -752,9 +930,9 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   sensor_msgs::PointCloud2 detect_cloud_ros;
   auto msg_pcl = target_points_list[fail_count_ % size];
-  std::cout << "points size:" << msg_pcl.points.size() << std::endl;
-  std::cout << "points widht:" << msg_pcl.width << std::endl;
-  std::cout << "points height:" << msg_pcl.height << std::endl;
+  //std::cout << "points size:" << msg_pcl.points.size() << std::endl;
+  //std::cout << "points widht:" << msg_pcl.width << std::endl;
+  //std::cout << "points height:" << msg_pcl.height << std::endl;
   pcl::toROSMsg(msg_pcl, detect_cloud_ros);
 
   detect_cloud_ros.header = pc.header;
@@ -764,6 +942,9 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   //memory開放 while外 
   target_points_list.clear();
   std::vector<PointCloudT>().swap(target_points_list);
+
+  mem_diff_sum_4 += GetMemDiff();
+  cout<<"Memory Usage 4 :"<< mem_diff_sum_4 << endl;
 
 }
 
