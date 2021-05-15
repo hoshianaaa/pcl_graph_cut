@@ -107,6 +107,8 @@ bool calcAroundDistance(std::multimap<std::uint32_t, std::uint32_t> supervoxel_a
     }
   }
   now_labels = after_labels;
+  after_labels.clear();
+  std::vector<int>().swap(after_labels);
   return found_label;
 }
 
@@ -154,6 +156,17 @@ void calcLabelArea(std::map<std::uint32_t, std::uint32_t> label_distance_map, st
   {
     label_area_map.insert(std::make_pair(key, areas[value]));
   }
+
+  distances.clear();
+  distance_count.clear();
+  areas.clear();
+  label_energy_map.clear();
+
+  std::vector<int>().swap(distances);
+  std::vector<int>().swap(distance_count);
+  std::vector<int>().swap(areas);
+  std::map<std::uint32_t, Energy>().swap(label_energy_map);
+
 }
 
 
@@ -284,6 +297,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   input_cloud_ = *cloud;
 
+  std::cout << "cloud callback" << std::endl;
+
   if (cloud->size() == 0)
   {
 
@@ -310,10 +325,14 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   PointCloudT target_points;
   std::vector<PointCloudT> target_points_list;
+  int loop_count = 0;
 
   while (1) 
   {
-
+      
+    std::cout << "super input cloud" << std::endl;
+    std::cout << "size:" << cloud->points.size() << std::endl;
+    std::cout << "loop count:" << loop_count << std::endl;
     pcl::SupervoxelClustering<PointT> super (voxel_resolution, seed_resolution);
     super.setInputCloud (cloud);
     super.setColorImportance (color_importance);
@@ -387,6 +406,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     while(1){
       if(!calcAroundDistance(supervoxel_adjacency, label_distance_map, now_labels, now_distance))break;
     }
+
 
     //printMap(label_distance_map,"label_distance_map");
 
@@ -471,6 +491,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
         adj_pair.label2 = labels[i];
         adj_label_pair_list.push_back(adj_pair);
       }
+      labels.clear();
+      std::vector<int>().swap(labels);
     }
 
     std::vector<double> adj_pair_energy_list;
@@ -547,6 +569,17 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       double x = std::min(f_uv, g_uv);
       double t = BETA * (1 + (x - THETA_TH)*C_SHARP/std::sqrt(1 + std::pow(x - THETA_TH, 2) * std::pow(C_SHARP, 2))) / 2;
       adj_pair_energy_list.push_back(t);
+
+      a_uv.clear();
+      normal_u.clear();
+      normal_v.clear();
+      out_vec.clear();
+
+      std::vector<double>().swap(a_uv);
+      std::vector<double>().swap(normal_u);
+      std::vector<double>().swap(normal_v);
+      std::vector<double>().swap(out_vec);
+
     }
 
 
@@ -556,11 +589,11 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     int node_num = label_energy_map.size();
 
-    Graph_III g(node_num,1);
+    Graph_III *g = new Graph_III(node_num,1);
 
     for (int i=0;i<node_num;i++)
     {
-      g.add_node();
+      g->add_node();
     }
 
     std::map<int, int> label_to_node_id;
@@ -571,8 +604,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     {
       label_to_node_id.insert(std::make_pair(iter->first, node_id));
       node_id_to_label.insert(std::make_pair(node_id ,iter->first));
-      g.add_node(node_id);
-      g.add_tweights(node_id, iter->second.d_obj, iter->second.d_bkg);
+      g->add_node(node_id);
+      g->add_tweights(node_id, iter->second.d_obj, iter->second.d_bkg);
       node_id++;
     }
 
@@ -581,17 +614,18 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       int l1 = adj_label_pair_list[i].label1;
       int l2 = adj_label_pair_list[i].label2;
       double t = adj_pair_energy_list[i];
-      g.add_edge(label_to_node_id[l1], label_to_node_id[l2], t, t);
+      g->add_edge(label_to_node_id[l1], label_to_node_id[l2], t, t);
     }
 
-    double flow = g.maxflow();
+
+    double flow = g->maxflow();
 
     //std::cout << "Flow:" << flow << std::endl;
 
     std::vector<int> debug_labels;
     for (int i=1;i<label_energy_map.size() + 1;i++)
     {
-      if (g.what_segment(i) == 1)
+      if (g->what_segment(i) == 1)
       {
         //std::cout << node_id_to_label[i] << std::endl;
         debug_labels.push_back(node_id_to_label[i]);
@@ -662,8 +696,39 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     if (filtered_cloud->points.size() == 0)break;
     else cloud = filtered_cloud;
+    loop_count++;
 
 
+    //memory開放 while内
+
+    delete g;
+
+    now_labels.clear();
+    adj_label_pair_list.clear();
+    adj_pair_energy_list.clear();
+    debug_labels.clear();
+
+    std::vector<int>().swap(now_labels);
+    std::vector<adj_label_pair>().swap(adj_label_pair_list);
+    std::vector<double>().swap(adj_pair_energy_list);
+    std::vector<int>().swap(debug_labels);
+
+    supervoxel_clusters.clear();
+    label_distance_map.clear();
+    label_area_map.clear();
+    label_energy_map.clear();
+    label_to_node_id.clear();
+    node_id_to_label.clear();
+
+    std::map <std::uint32_t, pcl::Supervoxel<PointT>::Ptr >().swap(supervoxel_clusters);
+    std::map<std::uint32_t, std::uint32_t>().swap(label_distance_map);
+    std::map<std::uint32_t, std::uint32_t>().swap(label_area_map);
+    std::map<std::uint32_t, Energy>().swap(label_energy_map);
+    std::map<int, int>().swap(label_to_node_id);
+    std::map<int, int>().swap(node_id_to_label);
+
+
+    
   }
 
   std::vector<int> size_list;
@@ -686,11 +751,19 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   int size = target_points_list.size();
 
   sensor_msgs::PointCloud2 detect_cloud_ros;
-  pcl::toROSMsg(target_points_list[fail_count_ % size], detect_cloud_ros);
+  auto msg_pcl = target_points_list[fail_count_ % size];
+  std::cout << "points size:" << msg_pcl.points.size() << std::endl;
+  std::cout << "points widht:" << msg_pcl.width << std::endl;
+  std::cout << "points height:" << msg_pcl.height << std::endl;
+  pcl::toROSMsg(msg_pcl, detect_cloud_ros);
 
   detect_cloud_ros.header = pc.header;
   detect_cloud_ros.is_dense = false;
   target_cloud_pub_.publish(detect_cloud_ros);
+
+  //memory開放 while外 
+  target_points_list.clear();
+  std::vector<PointCloudT>().swap(target_points_list);
 
 }
 

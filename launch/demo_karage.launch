@@ -6,6 +6,7 @@
     <arg name="gui" value="false"/>
   </include>
 
+  <!--node pkg="pcl_graph_cut" type="graph_cut_ros" name="graph_cut_ros" output="screen" launch-prefix="valgrind"-->
   <node pkg="pcl_graph_cut" type="graph_cut_ros" name="graph_cut_ros" output="screen">
     <param name="input_topic_name" value="karage_points"/>
     <param name="output_topic_name" value="graph_cut_points"/>
