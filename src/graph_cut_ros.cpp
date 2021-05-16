@@ -925,6 +925,21 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     //std::cout << "size:" << size << std::endl;
   }
 
+
+  if (target_points.size() == 0)
+  {
+
+    sensor_msgs::PointCloud2 ros_cloud;
+
+    ros_cloud.header = pc.header;
+    ros_cloud.is_dense = false;
+    debug_cloud_pub_.publish(ros_cloud);
+    target_cloud_pub_.publish(ros_cloud);
+
+    return;
+
+  }
+
   sensor_msgs::PointCloud2 debug_cloud_ros;
   pcl::toROSMsg(target_points, debug_cloud_ros);
 
