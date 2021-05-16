@@ -489,7 +489,10 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   int loop_count = 0;
 
   mem_diff_sum_1 += GetMemDiff();
-  cout<<"Memory Usage 1 :"<< mem_diff_sum_1 <<endl;
+  //cout<<"Memory Usage 1 :"<< mem_diff_sum_1 <<endl;
+
+  int cloud_size = 0;
+  int pre_cloud_size = 0;
 
   while (1) 
   {
@@ -505,7 +508,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     super.setNormalImportance (normal_importance);
 
     mem_diff_sum_2_1 += GetMemDiff();
-    cout<<"Memory Usage 2.1 :"<< mem_diff_sum_2_1 << endl;
+    //cout<<"Memory Usage 2.1 :"<< mem_diff_sum_2_1 << endl;
 
     std::map <std::uint32_t, pcl::Supervoxel<PointT>::Ptr > supervoxel_clusters;
 
@@ -520,7 +523,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     super.getSupervoxelAdjacency (supervoxel_adjacency);
 
     mem_diff_sum_2_2+= GetMemDiff();
-    cout<<"Memory Usage 2.2 :"<< mem_diff_sum_2_2 << endl;
+    //cout<<"Memory Usage 2.2 :"<< mem_diff_sum_2_2 << endl;
 
     //pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
     //viewer->setBackgroundColor (0, 0, 0);
@@ -560,7 +563,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     }
 
     mem_diff_sum_2_3+= GetMemDiff();
-    cout<<"Memory Usage 2.3 :"<< mem_diff_sum_2_3 << endl;
+    //cout<<"Memory Usage 2.3 :"<< mem_diff_sum_2_3 << endl;
 
     //graph_cutの処理
 
@@ -580,7 +583,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     }
 
     mem_diff_sum_2_4+= GetMemDiff();
-    cout<<"Memory Usage 2.4 :"<< mem_diff_sum_2_4 << endl;
+    //cout<<"Memory Usage 2.4 :"<< mem_diff_sum_2_4 << endl;
 
     //printMap(label_distance_map,"label_distance_map");
 
@@ -616,7 +619,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     }
 
     mem_diff_sum_2_5+= GetMemDiff();
-    cout<<"Memory Usage 2.5 :"<< mem_diff_sum_2_5 << endl;
+    //cout<<"Memory Usage 2.5 :"<< mem_diff_sum_2_5 << endl;
 
   /*
     std::vector<int> l;
@@ -758,7 +761,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     }
 
     mem_diff_sum_2_6+= GetMemDiff();
-    cout<<"Memory Usage 2.6 :"<< mem_diff_sum_2_6 << endl;
+    //cout<<"Memory Usage 2.6 :"<< mem_diff_sum_2_6 << endl;
 
     //グラフカット
 
@@ -863,7 +866,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     for (std::vector<int>::iterator it = newPointIdxVector->begin (); it != newPointIdxVector->end (); it++)
       filtered_cloud->points.push_back(cloud->points[*it]);
 
-    //std::cout << "filtered cloud size:" << filtered_cloud->points.size() << std::endl;
+    std::cout << "filtered cloud size:" << filtered_cloud->points.size() << std::endl;
     //std::cout << "origin size:" << cloud->points.size() << std::endl;
     //std::cout << "target size:" << points.size() << std::endl;
 
@@ -872,12 +875,16 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     delete octree_;
 
     mem_diff_sum_3 += GetMemDiff();
-    cout<<"Memory Usage 3 :"<< mem_diff_sum_3 << endl;
+    //cout<<"Memory Usage 3 :"<< mem_diff_sum_3 << endl;
 
-    if (filtered_cloud->points.size() == 0)break;
+    cloud_size = filtered_cloud->points.size();
+    
+    if (cloud_size == pre_cloud_size)break;
+    if (cloud_size == 0)break;
     else cloud = filtered_cloud;
     loop_count++;
 
+    pre_cloud_size = cloud_size;
 
     //memory開放 while内
     /*
@@ -944,7 +951,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   std::vector<PointCloudT>().swap(target_points_list);
 
   mem_diff_sum_4 += GetMemDiff();
-  cout<<"Memory Usage 4 :"<< mem_diff_sum_4 << endl;
+  //cout<<"Memory Usage 4 :"<< mem_diff_sum_4 << endl;
 
 }
 

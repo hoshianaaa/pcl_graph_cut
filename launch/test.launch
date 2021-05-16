@@ -1,0 +1,15 @@
+<launch>
+
+  <arg name="gui" default="true"/>
+  
+  <!--node pkg="pcl_graph_cut" type="graph_cut_ros" name="graph_cut_ros" output="screen" launch-prefix="valgrind"-->
+  <node pkg="pcl_graph_cut" type="graph_cut_ros" name="graph_cut_ros" output="screen">
+    <param name="input_topic_name" value="extract_indices/output"/>
+    <param name="output_topic_name" value="graph_cut_points"/>
+  </node>
+
+  <group if="$(arg gui)">
+	  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find pcl_graph_cut)/rviz/demo_karage.rviz" required="true" />
+  </group>
+
+</launch>
