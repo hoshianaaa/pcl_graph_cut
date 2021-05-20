@@ -8,8 +8,10 @@
     <param name="output_topic_name" value="graph_cut_points"/>
   </node>
 
+<!--
   <group if="$(arg gui)">
 	  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find pcl_graph_cut)/rviz/demo_karage.rviz" required="true" />
   </group>
+-->
 
 </launch>
