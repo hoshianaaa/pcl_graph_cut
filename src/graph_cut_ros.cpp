@@ -877,10 +877,9 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     deleteMultiMap(supervoxel_adjacency, labels);
     deleteSupervoxelMap(supervoxel_clusters, labels);
 
-    printMultiMap(supervoxel_adjacency, "adjacency");
-
+    std::cout << "adjacency size:" << supervoxel_adjacency.size() << std::endl;
     if(supervoxel_adjacency.size() == 0)break;
-
+    printMultiMap(supervoxel_adjacency, "adjacency");
     loop_count++;
 
   }
@@ -919,6 +918,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   }
 
 
+  std::cout << "debug cloud size:" << debug_cloud.size() << std::endl;
+
   sensor_msgs::PointCloud2 debug_cloud_ros;
   pcl::toROSMsg(debug_cloud, debug_cloud_ros);
 
@@ -928,12 +929,20 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   sensor_msgs::PointCloud2 detect_cloud_ros;
   int size = target_points_list.size();
-  auto msg_pcl = target_points_list[fail_count_ % size];
-  pcl::toROSMsg(msg_pcl, detect_cloud_ros);
+
+  std::cout << "target points size:" << size << std::endl;
+
+  if (size != 0)
+  {
+    auto msg_pcl = target_points_list[fail_count_ % size];
+    pcl::toROSMsg(msg_pcl, detect_cloud_ros);
+  }
+
 
   detect_cloud_ros.header = pc.header;
   detect_cloud_ros.is_dense = false;
   target_cloud_pub_.publish(detect_cloud_ros);
+
 
   //memory開放 while外 
   target_points_list.clear();
