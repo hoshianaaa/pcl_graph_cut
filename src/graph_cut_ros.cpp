@@ -569,6 +569,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   std::vector<std::vector<int>> cloud_labels_vector;
   //deleteMultiMap(supervoxel_adjacency, test);
 
+  bool isnan = 0;
+
   while (1) 
   {
 
@@ -803,6 +805,12 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
       double x = std::min(f_uv, g_uv);
       double t = BETA * (1 + (x - THETA_TH)*C_SHARP/std::sqrt(1 + std::pow(x - THETA_TH, 2) * std::pow(C_SHARP, 2))) / 2;
+
+      std::cout << "f_uv:" << f_uv << std::endl;
+      std::cout << "g_uv:" << g_uv << std::endl;
+      std::cout << "x:" << x << std::endl;
+      std::cout << "t:" << t << std::endl;
+
       adj_pair_energy_list.push_back(t);
 
       a_uv.clear();
@@ -825,10 +833,14 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     Graph_III *g = new Graph_III(node_num,1);
 
+    std::cout << "debug1" << std::endl;
+
     for (int i=0;i<node_num;i++)
     {
       g->add_node();
     }
+
+    std::cout << "debug2" << std::endl;
 
     std::map<int, int> label_to_node_id;
     std::map<int, int> node_id_to_label;
@@ -843,18 +855,33 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       node_id++;
     }
 
+    std::cout << "debug3" << std::endl;
+    std::cout << adj_pair_energy_list.size() << std::endl;
+    
     for (int i=0; i<adj_pair_energy_list.size(); i++)
     {
       int l1 = adj_label_pair_list[i].label1;
       int l2 = adj_label_pair_list[i].label2;
       double t = adj_pair_energy_list[i];
+      std::cout << "l1:" << l1 << " l2:" << l2 << " t:" << t << std::endl;
+
+      if (std::isnan(t))
+      {
+        isnan = 1;
+        break;
+      }
+
       g->add_edge(label_to_node_id[l1], label_to_node_id[l2], t, t);
+
     }
 
+    std::cout << "debug4" << std::endl;
+
+    if(isnan)break;
 
     double flow = g->maxflow();
 
-    //std::cout << "Flow:" << flow << std::endl;
+    std::cout << "Flow:" << flow << std::endl;
 
     std::vector<int> labels;
     for (int i=1;i<label_energy_map.size() + 1;i++)
@@ -879,7 +906,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     std::cout << "adjacency size:" << supervoxel_adjacency.size() << std::endl;
     if(supervoxel_adjacency.size() == 0)break;
-    printMultiMap(supervoxel_adjacency, "adjacency");
+    //printMultiMap(supervoxel_adjacency, "adjacency");
     loop_count++;
 
   }

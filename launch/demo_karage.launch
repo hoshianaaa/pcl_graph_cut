@@ -7,18 +7,17 @@
   </include>
 
   <!--node pkg="pcl_graph_cut" type="graph_cut_ros" name="graph_cut_ros" output="screen" launch-prefix="valgrind"-->
-  <node pkg="pcl_graph_cut" type="graph_cut_ros" name="graph_cut_ros" output="screen">
+  <node pkg="pcl_graph_cut" type="graph_cut_ros" name="graph_cut_ros">
     <param name="input_topic_name" value="karage_points"/>
     <param name="output_topic_name" value="graph_cut_points"/>
   </node>
 
    <node name="detect_graspable_poses_pcabase"
-        pkg="jsk_pcl_ros" type="detect_graspable_poses_pcabase.py">
+        pkg="pcl_tools" type="get_pca_mean_pos.py" output="screen" >
     <remap from="~input" to="graph_cut_points" />
     <rosparam subst_value="true">
-      direction: z
       hand_size: 0.10
-      interval_m: 0.03
+      deep_z: 0.03
     </rosparam>
   </node>
 
