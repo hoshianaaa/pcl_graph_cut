@@ -13,8 +13,8 @@
   </node>
 
    <node name="detect_graspable_poses_pcabase"
-        pkg="pcl_tools" type="get_pca_mean_pos.py" output="screen" >
-    <remap from="~input" to="graph_cut_points" />
+        pkg="pcl_tools" type="get_highest_pos_multi.py" output="screen" >
+    <remap from="~input" to="index_cloud" />
     <rosparam subst_value="true">
       hand_size: 0.10
       deep_z: 0.03
