@@ -363,7 +363,7 @@ class GraphCut
   private:
     ros::NodeHandle nh_;
 
-    ros::Publisher debug_cloud_pub_,target_cloud_pub_;
+    ros::Publisher debug_cloud_pub_,target_cloud_pub_, index_cloud_pub_;
     ros::Subscriber cloud_sub_;
     ros::ServiceServer srv_pre_pick_ ,srv_after_pick_;
 
@@ -374,6 +374,7 @@ class GraphCut
     std::string frame_;
     std::string input_topic_name_;
     std::string debug_topic_name_;
+    std::string index_topic_name_;
     std::string output_topic_name_;
 
     PointCloudT input_cloud_;
@@ -407,9 +408,11 @@ GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
   private_nh.param("sensor_frame", frame_, std::string("/base_link"));
   private_nh.param("input_topic_name", input_topic_name_, std::string("input_cloud"));
   private_nh.param("debug_topic_name", debug_topic_name_, std::string("debug_cloud"));
+  private_nh.param("index_topic_name", index_topic_name_, std::string("index_cloud"));
   private_nh.param("output_topic_name", output_topic_name_, std::string("output_cloud"));
 
   debug_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(debug_topic_name_,1, false);
+  index_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(index_topic_name_,1, false);
   target_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(output_topic_name_,1, false);
   cloud_sub_ = nh_.subscribe(input_topic_name_, 1, &GraphCut::cloudCallback, this);
 
@@ -511,13 +514,18 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   if (cloud->size() == 0)
   {
 
-    sensor_msgs::PointCloud2 ros_cloud;
+    sensor_msgs::PointCloud2 ros_cloud,ros_cloud_i;
     pcl::toROSMsg(*cloud, ros_cloud);
 
     ros_cloud.header = pc.header;
     ros_cloud.is_dense = false;
     debug_cloud_pub_.publish(ros_cloud);
     target_cloud_pub_.publish(ros_cloud);
+
+    pcl::PointCloud<pcl::PointXYZI> p;
+    pcl::toROSMsg(p, ros_cloud_i);
+
+    index_cloud_pub_.publish(ros_cloud_i);
 
     return;
   }
@@ -912,12 +920,15 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   }
 
   PointCloudT debug_cloud;
+  pcl::PointCloud<pcl::PointXYZI> index_cloud;
   std::vector<PointCloudT> target_points_list;
 
+  int label = 0;
   for (int i=0;i<cloud_labels_vector.size();i++)
   {
     pcl::Supervoxel<PointT>::Ptr cluster;
     PointCloudT cloud;
+    pcl::PointCloud<pcl::PointXYZI> cloud_i;
     for (int j=0;j<cloud_labels_vector[i].size();j++)
     {
        cluster = supervoxel_clusters_origin[cloud_labels_vector[i][j]];
@@ -932,27 +943,44 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       int color_g = rand() % 256;
       int color_b = rand() % 256;
 
+      pcl::PointCloud<pcl::PointXYZI> i_cloud;
+
       for (size_t k = 0; k < cloud.size(); ++k)
       {
         cloud[k].r = color_r;
         cloud[k].g = color_g;
         cloud[k].b = color_b;
         cloud[k].a = 255;
+
+        pcl::PointXYZI pi;
+        pi.x = cloud[k].x;
+        pi.y = cloud[k].y;
+        pi.z = cloud[k].z;
+        pi.intensity = label;
+
+        i_cloud.push_back(pi);
       }
       debug_cloud += cloud;
+      index_cloud += i_cloud;
       target_points_list.push_back(cloud);
+      label++;
     }
   }
 
 
   std::cout << "debug cloud size:" << debug_cloud.size() << std::endl;
 
-  sensor_msgs::PointCloud2 debug_cloud_ros;
+  sensor_msgs::PointCloud2 debug_cloud_ros,index_cloud_ros;
   pcl::toROSMsg(debug_cloud, debug_cloud_ros);
+  pcl::toROSMsg(index_cloud, index_cloud_ros);
 
   debug_cloud_ros.header = pc.header;
   debug_cloud_ros.is_dense = false;
   debug_cloud_pub_.publish(debug_cloud_ros);
+
+  index_cloud_ros.header = pc.header;
+  index_cloud_ros.is_dense = false;
+  index_cloud_pub_.publish(index_cloud_ros);
 
   sensor_msgs::PointCloud2 detect_cloud_ros;
   int size = target_points_list.size();
