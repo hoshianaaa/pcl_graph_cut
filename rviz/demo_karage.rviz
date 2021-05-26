@@ -147,16 +147,16 @@ Visualization Manager:
       Axes Radius: 0.004999999888241291
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: PoseArray
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Axes
-      Topic: /detect_graspable_poses_pcabase/output/can_grasp_poses
+      Topic: /highest_poses
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Arrow Length: 0.30000001192092896
       Axes Length: 0.029999999329447746
@@ -170,9 +170,21 @@ Visualization Manager:
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Axes
-      Topic: /detect_graspable_poses_pcabase/output/debug_highest_pos
+      Topic: /posearray_clipper/output/clipped_poses
       Unreliable: false
       Value: true
+    - Class: jsk_rviz_plugin/BoundingBox
+      Enabled: true
+      Name: BoundingBox
+      Topic: /posearray_clipper/output/clipper_bbox
+      Unreliable: false
+      Value: true
+      alpha: 0.800000011920929
+      color: 25; 255; 0
+      coloring: Flat color
+      line width: 0.004999999888241291
+      only edge: false
+      show coords: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -201,7 +213,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.21271835267543793
+      Distance: 1.3437610864639282
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -216,10 +228,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6747962236404419
+      Pitch: 0.9597963094711304
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.326164245605469
+      Yaw: 1.8743244409561157
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 0.2753593623638153

@@ -15,9 +15,26 @@
    <node name="detect_graspable_poses_pcabase"
         pkg="pcl_tools" type="get_highest_pos_multi.py" output="screen" >
     <remap from="~input" to="index_cloud" />
+    <remap from="~output" to="highest_poses" />
     <rosparam subst_value="true">
       hand_size: 0.10
       deep_z: 0.03
+    </rosparam>
+  </node>
+
+   <node name="posearray_clipper"
+        pkg="pcl_tools" type="posearray_clipper.py" output="screen" >
+    <remap from="~input" to="highest_poses" />
+    <rosparam subst_value="true">
+
+      initial_pos: [0.1, 0, 0]
+      initial_rot: [0, 0, 0]
+      dimension_x: 0.15
+      dimension_y: 0.27
+      dimension_z: 0.2
+
+      frame_id: base_link
+
     </rosparam>
   </node>
 
