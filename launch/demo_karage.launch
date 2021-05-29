@@ -25,6 +25,7 @@
    <node name="posearray_clipper"
         pkg="pcl_tools" type="posearray_clipper.py" output="screen" >
     <remap from="~input" to="highest_poses" />
+    <remap from="~output" to="clipped_poses" />
     <rosparam subst_value="true">
 
       initial_pos: [0.1, 0, 0]
@@ -37,6 +38,18 @@
 
     </rosparam>
   </node>
+
+   <node name="posearray_selector"
+        pkg="pcl_tools" type="posearray_selector.py" output="screen" >
+    <remap from="~input" to="clipped_poses" />
+    <rosparam subst_value="true">
+
+      frame_id: base_link
+
+    </rosparam>
+  </node>
+
+
 
   <group if="$(arg gui)">
 	  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find pcl_graph_cut)/rviz/demo_karage.rviz" required="true" />
