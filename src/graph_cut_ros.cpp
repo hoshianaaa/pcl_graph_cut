@@ -159,6 +159,11 @@ void addSupervoxelConnectionsToViewer (PointT &supervoxel_center,
                                        pcl::visualization::PCLVisualizer::Ptr & viewer);
 */
 
+double voxel_resolution = 0.005f;
+double seed_resolution = 0.008f;
+double color_importance = 0.2f;
+double spatial_importance = 0.4f;
+double normal_importance = 1.0f;
 
 double U = 30;
 double SIGMA = 10;
@@ -166,6 +171,7 @@ double SIGMA = 10;
 double BETA = 10;
 double THETA_TH = 0;
 double C_SHARP = 3;
+int calc_around_distance_th_ = 10;
 
 int DELETE_CLOUD_SIZE_TH = 50;
 int PICK_SUCCESS_CLOUD_SIZE_TH  = 50;
@@ -228,6 +234,8 @@ bool calcAroundDistance(std::multimap<std::uint32_t, std::uint32_t> supervoxel_a
   now_labels = after_labels;
   after_labels.clear();
   std::vector<int>().swap(after_labels);
+
+  if(now_distance >= calc_around_distance_th_)found_label = 0;
   return found_label;
 }
 
@@ -363,7 +371,7 @@ class GraphCut
   private:
     ros::NodeHandle nh_;
 
-    ros::Publisher debug_cloud_pub_,target_cloud_pub_, index_cloud_pub_;
+    ros::Publisher supervoxel_cluster_pub_, debug_cloud_pub_,target_cloud_pub_, index_cloud_pub_;
     ros::Subscriber cloud_sub_;
     ros::ServiceServer srv_pre_pick_ ,srv_after_pick_;
 
@@ -411,6 +419,7 @@ GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
   private_nh.param("index_topic_name", index_topic_name_, std::string("index_cloud"));
   private_nh.param("output_topic_name", output_topic_name_, std::string("output_cloud"));
 
+  supervoxel_cluster_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("supervoxel_cluster",1, false);
   debug_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(debug_topic_name_,1, false);
   index_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(index_topic_name_,1, false);
   target_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(output_topic_name_,1, false);
@@ -530,12 +539,6 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     return;
   }
 
-  float voxel_resolution = 0.005f;
-  float seed_resolution = 0.008f;
-  float color_importance = 0.2f;
-  float spatial_importance = 0.4f;
-  float normal_importance = 1.0f;
-
   //////////////////////////////  //////////////////////////////
   ////// This is how to use supervoxels
   //////////////////////////////  //////////////////////////////
@@ -579,10 +582,18 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   bool isnan = 0;
 
+  std::cout << "start " << std::endl;
+
+  clock_t start_time = times(NULL);
+
   while (1) 
   {
 
+
+    
     std::cout << "loop count:" << loop_count << std::endl;
+
+    std::cout << "time1 " << times(NULL) - start_time << std::endl;
 
     //std::cout << "super input cloud" << std::endl;
     //std::cout << "size:" << cloud->points.size() << std::endl;
@@ -605,12 +616,35 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     //viewer->addPointCloudNormals<PointNormal> (sv_normal_cloud,1,0.05f, "supervoxel_normals");
 
     //To make a graph of the supervoxel adjacency, we need to iterate through the supervoxel adjacency multimap
+
+    pcl::PointCloud<pcl::PointXYZI> supervoxel_cluster_cloud;
+
+    int index = 0;
+
     for (auto label_itr = supervoxel_adjacency.cbegin (); label_itr != supervoxel_adjacency.cend (); )
     {
       //First get the label
       std::uint32_t supervoxel_label = label_itr->first;
       //Now get the supervoxel corresponding to the label
       pcl::Supervoxel<PointT>::Ptr supervoxel = supervoxel_clusters.at (supervoxel_label);
+
+      if (loop_count == 0)
+      {
+        auto supervoxel_cloud = supervoxel -> voxels_;
+
+        pcl::PointCloud<pcl::PointXYZI> cloud;
+        pcl::PointXYZI point;
+        for (auto elem : supervoxel_cloud->points)
+        {
+          point.x = elem.x;
+          point.y = elem.y;
+          point.z = elem.z;
+          point.intensity = index;
+          cloud.push_back(point);
+        }
+        index++;
+        supervoxel_cluster_cloud += cloud;
+      }
 
       //Now we need to iterate through the adjacent supervoxels and make a point cloud of them
       PointCloudT adjacent_supervoxel_centers;
@@ -626,6 +660,17 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       //addSupervoxelConnectionsToViewer (supervoxel->centroid_, adjacent_supervoxel_centers, ss.str (), viewer);
       //Move iterator forward to next label
       label_itr = supervoxel_adjacency.upper_bound (supervoxel_label);
+    }
+
+    if (loop_count == 0)
+    {
+      sensor_msgs::PointCloud2 supervoxel_cluster_cloud_ros;
+      pcl::toROSMsg(supervoxel_cluster_cloud, supervoxel_cluster_cloud_ros);
+
+      supervoxel_cluster_cloud_ros.header = pc.header;
+      supervoxel_cluster_cloud_ros.is_dense = false;
+
+      supervoxel_cluster_pub_.publish(supervoxel_cluster_cloud_ros);
     }
 
     mem_diff_sum_2_3+= GetMemDiff();
@@ -644,9 +689,16 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     label_distance_map.insert(std::make_pair(maxZlabel, now_distance));
     now_labels.push_back(maxZlabel);
 
+    std::cout << "time2 " << times(NULL) - start_time << std::endl;
+
+    int count = 0;
     while(1){
       if(!calcAroundDistance(supervoxel_adjacency, label_distance_map, now_labels, now_distance))break;
+      count++;
     }
+    std::cout << "calc around count:" << count << std::endl;
+
+    std::cout << "time3 " << times(NULL) - start_time << std::endl;
 
     mem_diff_sum_2_4+= GetMemDiff();
     //cout<<"Memory Usage 2.4 :"<< mem_diff_sum_2_4 << endl;
@@ -685,6 +737,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     }
 
     mem_diff_sum_2_5+= GetMemDiff();
+
+    std::cout << "time4 " << times(NULL) - start_time << std::endl;
     //cout<<"Memory Usage 2.5 :"<< mem_diff_sum_2_5 << endl;
 
   /*
@@ -814,10 +868,10 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       double x = std::min(f_uv, g_uv);
       double t = BETA * (1 + (x - THETA_TH)*C_SHARP/std::sqrt(1 + std::pow(x - THETA_TH, 2) * std::pow(C_SHARP, 2))) / 2;
 
-      std::cout << "f_uv:" << f_uv << std::endl;
-      std::cout << "g_uv:" << g_uv << std::endl;
-      std::cout << "x:" << x << std::endl;
-      std::cout << "t:" << t << std::endl;
+      //std::cout << "f_uv:" << f_uv << std::endl;
+      //std::cout << "g_uv:" << g_uv << std::endl;
+      //std::cout << "x:" << x << std::endl;
+      //std::cout << "t:" << t << std::endl;
 
       adj_pair_energy_list.push_back(t);
 
@@ -835,20 +889,18 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     mem_diff_sum_2_6+= GetMemDiff();
     //cout<<"Memory Usage 2.6 :"<< mem_diff_sum_2_6 << endl;
 
+    std::cout << "time5 " << times(NULL) - start_time << std::endl;
+
     //グラフカット
 
     int node_num = label_energy_map.size();
 
     Graph_III *g = new Graph_III(node_num,1);
 
-    std::cout << "debug1" << std::endl;
-
     for (int i=0;i<node_num;i++)
     {
       g->add_node();
     }
-
-    std::cout << "debug2" << std::endl;
 
     std::map<int, int> label_to_node_id;
     std::map<int, int> node_id_to_label;
@@ -863,7 +915,6 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       node_id++;
     }
 
-    std::cout << "debug3" << std::endl;
     std::cout << adj_pair_energy_list.size() << std::endl;
     
     for (int i=0; i<adj_pair_energy_list.size(); i++)
@@ -871,7 +922,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       int l1 = adj_label_pair_list[i].label1;
       int l2 = adj_label_pair_list[i].label2;
       double t = adj_pair_energy_list[i];
-      std::cout << "l1:" << l1 << " l2:" << l2 << " t:" << t << std::endl;
+      //std::cout << "l1:" << l1 << " l2:" << l2 << " t:" << t << std::endl;
 
       if (std::isnan(t))
       {
@@ -883,13 +934,12 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     }
 
-    std::cout << "debug4" << std::endl;
 
     if(isnan)break;
 
     double flow = g->maxflow();
 
-    std::cout << "Flow:" << flow << std::endl;
+    //std::cout << "Flow:" << flow << std::endl;
 
     std::vector<int> labels;
     for (int i=1;i<label_energy_map.size() + 1;i++)
@@ -904,10 +954,12 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
     cloud_labels_vector.push_back(labels);
 
+/*
     std::cout << "labels" << std::endl;
     for(auto it = labels.begin(); it != labels.end(); ++it) {
       std::cout << *it << std::endl;
     }
+*/
 
     deleteMultiMap(supervoxel_adjacency, labels);
     deleteSupervoxelMap(supervoxel_clusters, labels);
@@ -922,6 +974,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   PointCloudT debug_cloud;
   pcl::PointCloud<pcl::PointXYZI> index_cloud;
   std::vector<PointCloudT> target_points_list;
+
+  std::cout << "time6 " << times(NULL) - start_time << std::endl;
 
   int label = 0;
   for (int i=0;i<cloud_labels_vector.size();i++)
@@ -967,8 +1021,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     }
   }
 
-
-  std::cout << "debug cloud size:" << debug_cloud.size() << std::endl;
+  //std::cout << "debug cloud size:" << debug_cloud.size() << std::endl;
 
   sensor_msgs::PointCloud2 debug_cloud_ros,index_cloud_ros;
   pcl::toROSMsg(debug_cloud, debug_cloud_ros);
@@ -1014,11 +1067,19 @@ void callback(pcl_graph_cut::GraphCutRosConfig& config, uint32_t level)
   std::cout << "SIGMA:" << config.SIGMA << std::endl;
   std::cout << "C_SHARP:" << config.C_SHARP << std::endl;
 
+  voxel_resolution = config.voxel_resolution;
+  seed_resolution = config.seed_resolution;
+  color_importance = config.color_importance;
+  spatial_importance = config.spatial_importance;
+  normal_importance = config.normal_importance;
+
   U = config.U;
   SIGMA = config.SIGMA;
   C_SHARP = config.C_SHARP;
   DELETE_CLOUD_SIZE_TH = config.DELETE_CLOUD_SIZE_TH;
   PICK_SUCCESS_CLOUD_SIZE_TH = config.PICK_SUCCESS_CLOUD_SIZE_TH;
+
+  calc_around_distance_th_ = config.CALC_AROUND_DISTANCE_TH;
   
 
 }

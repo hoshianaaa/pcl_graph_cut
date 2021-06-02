@@ -3,7 +3,8 @@ Panels:
     Help Height: 78
     Name: Displays
     Property Tree Widget:
-      Expanded: ~
+      Expanded:
+        - /PointCloud22
       Splitter Ratio: 0.5
     Tree Height: 462
   - Class: rviz/Selection
@@ -91,12 +92,12 @@ Visualization Manager:
       Channel Name: intensity
       Class: rviz/PointCloud2
       Color: 239; 41; 41
-      Color Transformer: RGB8
+      Color Transformer: Intensity
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 4096
+      Max Intensity: 211
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: PointCloud2
@@ -104,13 +105,13 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.004999999888241291
+      Size (m): 0.0020000000949949026
       Style: Flat Squares
-      Topic: /debug_cloud
+      Topic: /supervoxel_cluster
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -123,10 +124,10 @@ Visualization Manager:
       Color: 239; 41; 41
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 7
+      Max Intensity: 40
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: PointCloud2
@@ -134,13 +135,13 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.004999999888241291
+      Size (m): 0.0007999999797903001
       Style: Flat Squares
       Topic: /index_cloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Arrow Length: 0.30000001192092896
       Axes Length: 0.029999999329447746
@@ -163,7 +164,7 @@ Visualization Manager:
       Axes Radius: 0.004999999888241291
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: PoseArray
@@ -172,7 +173,7 @@ Visualization Manager:
       Shape: Axes
       Topic: /posearray_clipper/output/clipped_poses
       Unreliable: false
-      Value: true
+      Value: false
     - Class: jsk_rviz_plugin/BoundingBox
       Enabled: true
       Name: BoundingBox
@@ -191,7 +192,7 @@ Visualization Manager:
       Axes Radius: 0.004999999888241291
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: PoseArray
@@ -200,7 +201,7 @@ Visualization Manager:
       Shape: Axes
       Topic: /posearray_selector/output/select_poses
       Unreliable: false
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -229,25 +230,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.3737486004829407
+      Distance: 0.20602890849113464
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.20000000298023224
-        Y: 0
-        Z: -0.05000000074505806
+        X: 0.18580898642539978
+        Y: 0.02880319580435753
+        Z: -0.026863526552915573
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9301995038986206
+      Pitch: 1.134795069694519
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.870654344558716
+      Yaw: 5.723742961883545
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 0.2753593623638153
@@ -286,4 +287,4 @@ Window Geometry:
     collapsed: true
   Width: 1389
   X: 531
-  Y: 134
+  Y: 27
