@@ -159,8 +159,8 @@ void addSupervoxelConnectionsToViewer (PointT &supervoxel_center,
                                        pcl::visualization::PCLVisualizer::Ptr & viewer);
 */
 
-double voxel_resolution = 0.005f;
-double seed_resolution = 0.008f;
+double voxel_resolution = 0.001f;
+double seed_resolution = 0.01f;
 double color_importance = 0.2f;
 double spatial_importance = 0.4f;
 double normal_importance = 1.0f;
@@ -634,12 +634,13 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
         pcl::PointCloud<pcl::PointXYZI> cloud;
         pcl::PointXYZI point;
+        int color = rand() % 255;
         for (auto elem : supervoxel_cloud->points)
         {
           point.x = elem.x;
           point.y = elem.y;
           point.z = elem.z;
-          point.intensity = index;
+          point.intensity = color;
           cloud.push_back(point);
         }
         index++;
@@ -942,6 +943,8 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     //std::cout << "Flow:" << flow << std::endl;
 
     std::vector<int> labels;
+    std::cout << "label_energy_map:" << label_energy_map.size() << std::endl;
+
     for (int i=1;i<label_energy_map.size() + 1;i++)
     {
       if (g->what_segment(i) == 1)
@@ -960,6 +963,11 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       std::cout << *it << std::endl;
     }
 */
+
+    std::cout << "labels size:" << labels.size() << std::endl;
+
+    if (labels.size() == 0)
+      labels.push_back(maxZlabel);
 
     deleteMultiMap(supervoxel_adjacency, labels);
     deleteSupervoxelMap(supervoxel_clusters, labels);
@@ -992,7 +1000,7 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     if (cloud.size() >= DELETE_CLOUD_SIZE_TH)
     {
 
-          //random 0 ~ 255
+      //random 0 ~ 255
       int color_r = rand() % 256;
       int color_g = rand() % 256;
       int color_b = rand() % 256;
@@ -1050,7 +1058,6 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   detect_cloud_ros.header = pc.header;
   detect_cloud_ros.is_dense = false;
   target_cloud_pub_.publish(detect_cloud_ros);
-
 
   //memory開放 while外 
   target_points_list.clear();
