@@ -372,7 +372,11 @@ class GraphCut
     ros::NodeHandle nh_;
 
     ros::Publisher supervoxel_cluster_pub_, debug_cloud_pub_,target_cloud_pub_, index_cloud_pub_;
+
+    ros::Publisher energy_points_pub_, f_uv_points_pub_, g_uv_points_pub_;
+
     ros::Subscriber cloud_sub_;
+
     ros::ServiceServer srv_pre_pick_ ,srv_after_pick_;
 
     void cloudCallback(const sensor_msgs::PointCloud2 &pc);
@@ -423,6 +427,10 @@ GraphCut::GraphCut(ros::NodeHandle* nodehandle):nh_(*nodehandle)
   debug_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(debug_topic_name_,1, false);
   index_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(index_topic_name_,1, false);
   target_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(output_topic_name_,1, false);
+  energy_points_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("energy_points",1, false);
+  f_uv_points_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("f_uv_points",1, false);
+  g_uv_points_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("g_uv_points",1, false);
+
   cloud_sub_ = nh_.subscribe(input_topic_name_, 1, &GraphCut::cloudCallback, this);
 
   srv_pre_pick_ = nh_.advertiseService("prePick", &GraphCut::PrePickServiceCallback, this);
@@ -586,11 +594,15 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
 
   clock_t start_time = times(NULL);
 
+  pcl::PointCloud<pcl::PointXYZI> energy_points;
+  pcl::PointCloud<pcl::PointXYZI> f_uv_points;
+  pcl::PointCloud<pcl::PointXYZI> g_uv_points;
+
+
   while (1) 
   {
 
-
-    
+   
     std::cout << "loop count:" << loop_count << std::endl;
 
     std::cout << "time1 " << times(NULL) - start_time << std::endl;
@@ -796,8 +808,14 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     }
 
     std::vector<double> adj_pair_energy_list;
+
     for (int i=0;i<adj_label_pair_list.size();i++)
     {
+
+      pcl::PointXYZI energy_point;
+      pcl::PointXYZI f_uv_point;
+      pcl::PointXYZI g_uv_point;
+
       int u_label = adj_label_pair_list[i].label1;
       int v_label = adj_label_pair_list[i].label2; 
      
@@ -807,6 +825,22 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       PointT u_p, v_p; 
       u_p = u_supervoxel->centroid_;
       v_p = v_supervoxel->centroid_;
+
+      double px = (u_p.x + v_p.x) / 2;
+      double py = (u_p.y + v_p.y) / 2;
+      double pz = (u_p.z + v_p.z) / 2;
+
+      energy_point.x = px;
+      energy_point.y = py;
+      energy_point.z = pz;
+
+      f_uv_point.x = px;
+      f_uv_point.y = py;
+      f_uv_point.z = pz;
+
+      g_uv_point.x = px;
+      g_uv_point.y = py;
+      g_uv_point.z = pz;
 
       std::vector<double> a_uv = {0, 0, 0};
 
@@ -873,6 +907,14 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       //std::cout << "g_uv:" << g_uv << std::endl;
       //std::cout << "x:" << x << std::endl;
       //std::cout << "t:" << t << std::endl;
+
+      f_uv_point.intensity = f_uv;
+      g_uv_point.intensity = g_uv;
+      energy_point.intensity = t;
+
+      f_uv_points.push_back(f_uv_point);
+      g_uv_points.push_back(g_uv_point);
+      energy_points.push_back(energy_point);
 
       adj_pair_energy_list.push_back(t);
 
@@ -955,6 +997,10 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     
     delete g;
 
+
+    if (labels.size() == 0)
+      labels.push_back(maxZlabel);
+
     cloud_labels_vector.push_back(labels);
 
 /*
@@ -963,11 +1009,6 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
       std::cout << *it << std::endl;
     }
 */
-
-    std::cout << "labels size:" << labels.size() << std::endl;
-
-    if (labels.size() == 0)
-      labels.push_back(maxZlabel);
 
     deleteMultiMap(supervoxel_adjacency, labels);
     deleteSupervoxelMap(supervoxel_clusters, labels);
@@ -978,6 +1019,28 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
     loop_count++;
 
   }
+
+  sensor_msgs::PointCloud2 f_uv_points_ros;
+  sensor_msgs::PointCloud2 g_uv_points_ros;
+  sensor_msgs::PointCloud2 energy_points_ros;
+
+  pcl::toROSMsg(f_uv_points, f_uv_points_ros);
+  pcl::toROSMsg(g_uv_points, g_uv_points_ros);
+  pcl::toROSMsg(energy_points, energy_points_ros);
+
+  f_uv_points_ros.header = pc.header;
+  f_uv_points_ros.is_dense = false;
+  f_uv_points_pub_.publish(f_uv_points_ros);
+
+  g_uv_points_ros.header = pc.header;
+  g_uv_points_ros.is_dense = false;
+  g_uv_points_pub_.publish(g_uv_points_ros);
+
+  energy_points_ros.header = pc.header;
+  energy_points_ros.is_dense = false;
+  energy_points_pub_.publish(energy_points_ros);
+
+
 
   PointCloudT debug_cloud;
   pcl::PointCloud<pcl::PointXYZI> index_cloud;
