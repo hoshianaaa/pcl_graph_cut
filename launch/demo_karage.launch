@@ -49,7 +49,7 @@
     </rosparam>
   </node>
 
-
+  <node name="dynparam" pkg="dynamic_reconfigure" type="dynparam" args="load graph_cut_ros $(find pcl_graph_cut)/cfg/demo_karage.yaml" />
 
   <group if="$(arg gui)">
 	  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find pcl_graph_cut)/rviz/demo_karage.rviz" required="true" />

@@ -1,0 +1,39 @@
+!!python/object/new:dynamic_reconfigure.encoding.Config
+dictitems:
+  CALC_AROUND_DISTANCE_TH: 5
+  C_SHARP: 3.0
+  DELETE_CLOUD_SIZE_TH: 30
+  PICK_SUCCESS_CLOUD_SIZE_TH: 50
+  SIGMA: 29.87
+  U: 27.72
+  color_importance: 0.2
+  groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+    dictitems:
+      CALC_AROUND_DISTANCE_TH: 5
+      C_SHARP: 3.0
+      DELETE_CLOUD_SIZE_TH: 30
+      PICK_SUCCESS_CLOUD_SIZE_TH: 50
+      SIGMA: 29.87
+      U: 27.72
+      color_importance: 0.2
+      groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      id: 0
+      name: Default
+      normal_importance: 0.56
+      parameters: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      parent: 0
+      seed_resolution: 0.01
+      size: 1
+      spatial_importance: 1.0
+      state: true
+      type: ''
+      voxel_resolution: 0.001
+    state: []
+  normal_importance: 0.56
+  seed_resolution: 0.01
+  size: 1
+  spatial_importance: 1.0
+  voxel_resolution: 0.001
+state: []
