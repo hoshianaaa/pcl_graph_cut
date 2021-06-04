@@ -1123,11 +1123,11 @@ void GraphCut::cloudCallback(const sensor_msgs::PointCloud2 &pc)
   target_cloud_pub_.publish(detect_cloud_ros);
 
   //memory開放 while外 
-  target_points_list.clear();
-  std::vector<PointCloudT>().swap(target_points_list);
+  //target_points_list.clear();
+  //std::vector<PointCloudT>().swap(target_points_list);
 
   mem_diff_sum_4 += GetMemDiff();
-  //cout<<"Memory Usage 4 :"<< mem_diff_sum_4 << endl;
+  cout<<"Memory Usage 4 :"<< mem_diff_sum_4 << endl;
 }
 
 void callback(pcl_graph_cut::GraphCutRosConfig& config, uint32_t level)
