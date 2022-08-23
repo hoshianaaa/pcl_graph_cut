@@ -4,6 +4,8 @@ edge based graph cut segmenation software for ros
 
 ## input
 
+ros message PointCloud2 
+
 ## output
 
 
