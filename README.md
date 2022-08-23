@@ -2,6 +2,10 @@
 
 edge based graph cut segmenation software for ros
 
+- application
+
+Individual object recognition from bulk scene such as fried chicken, fried shrimp, fried fish, oranges, etc.
+
 ## input
 
 ros message PointCloud2 
