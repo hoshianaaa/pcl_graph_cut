@@ -1,6 +1,6 @@
 # pcl_graph_cut
 
-edge based graph cut segmenation software for ros
+edge based graph cut segmenation 
 
 - application
 
