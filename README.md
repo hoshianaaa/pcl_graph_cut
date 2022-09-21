@@ -20,8 +20,9 @@ ros message PointCloud2
 
 # algorithm
 
-下記論文の実装  
+Implementation of the following paper
 
 「CAD モデルを用いないばら積みシーンからの物体検出」
+
 https://www.jstage.jst.go.jp/article/jrsj/36/5/36_36_368/_pdf
 
